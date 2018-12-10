@@ -25,6 +25,8 @@ export type PersistConfig = {
   debug?: boolean,
   serialize?: boolean,
   timeout?: number,
+  dbConnectionRequired?: boolean,
+  dbName?: string,
 }
 
 export type PersistorOptions = {

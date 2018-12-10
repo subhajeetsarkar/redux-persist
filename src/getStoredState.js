@@ -14,28 +14,40 @@ export default function getStoredState(
   const storage = config.storage
   const debug = config.debug
   const deserialize = config.serialize === false ? x => x : defaultDeserialize
-  return storage.getItem(storageKey).then(serialized => {
-    if (!serialized) return undefined
-    else {
-      try {
-        let state = {}
-        let rawState = deserialize(serialized)
-        Object.keys(rawState).forEach(key => {
-          state[key] = transforms.reduceRight((subState, transformer) => {
-            return transformer.out(subState, key, rawState)
-          }, deserialize(rawState[key]))
-        })
-        return state
-      } catch (err) {
-        if (process.env.NODE_ENV !== 'production' && debug)
-          console.log(
-            `redux-persist/getStoredState: Error restoring data ${serialized}`,
-            err
-          )
-        throw err
+  //TODO: catch error and make it async await
+  let dbConnectPromise
+  if (config.dbConnectionRequired && typeof storage.openDb === 'function') {
+    dbConnectPromise = storage.openDb(config.dbName)
+  } else {
+    dbConnectPromise = new Promise((resolve, reject) => {
+      setTimeout(resolve, 0)
+    })
+  }
+
+  return dbConnectPromise.then(() =>
+    storage.getItem(storageKey).then(serialized => {
+      if (!serialized) return undefined
+      else {
+        try {
+          let state = {}
+          let rawState = deserialize(serialized)
+          Object.keys(rawState).forEach(key => {
+            state[key] = transforms.reduceRight((subState, transformer) => {
+              return transformer.out(subState, key, rawState)
+            }, deserialize(rawState[key]))
+          })
+          return state
+        } catch (err) {
+          if (process.env.NODE_ENV !== 'production' && debug)
+            console.log(
+              `redux-persist/getStoredState: Error restoring data ${serialized}`,
+              err
+            )
+          throw err
+        }
       }
-    }
-  })
+    })
+  )
 }
 
 function defaultDeserialize(serial) {
