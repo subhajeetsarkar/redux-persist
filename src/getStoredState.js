@@ -23,7 +23,6 @@ export default function getStoredState(
 
   return dbConnectPromise.then(() =>
     storage.multiGet(config.key).then(results => {
-      debugger
       if (!results || !results.length) return undefined
       else {
         try {
