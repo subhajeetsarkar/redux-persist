@@ -3,6 +3,7 @@
 import { KEY_PREFIX, REHYDRATE } from './constants'
 
 import type { Persistoid, PersistConfig, Transform } from './types'
+import changesetAccumulator from './changesetAcculmulator'
 
 type IntervalID = any // @TODO remove once flow < 0.63 support is no longer required.
 
@@ -12,86 +13,49 @@ export default function createPersistoid(config: PersistConfig): Persistoid {
   const whitelist: ?Array<string> = config.whitelist || null
   const transforms = config.transforms || []
   const throttle = config.throttle || 0
-  const storageKey = `${
-    config.keyPrefix !== undefined ? config.keyPrefix : KEY_PREFIX
-  }${config.key}`
   const storage = config.storage
   const serialize = config.serialize === false ? x => x : defaultSerialize
-
+  const serializationLevel = config.serializationLevel || 0
   // initialize stateful values
   let lastState = {}
-  let stagedState = {}
-  let keysToProcess = []
+  let changeSet
   let timeIterator: ?IntervalID = null
   let writePromise = null
 
   const update = (state: Object) => {
-    // add any changed keys to the queue
-    Object.keys(state).forEach(key => {
-      if (!passWhitelistBlacklist(key)) return // is keyspace ignored? noop
-      if (lastState[key] === state[key]) return // value unchanged? noop
-      if (keysToProcess.indexOf(key) !== -1) return // is key already queued? noop
-      keysToProcess.push(key) // add key to queue
-    })
-
-    //if any key is missing in the new state which was present in the lastState,
-    //add it for processing too
-    Object.keys(lastState).forEach(key => {
-      if (state[key] === undefined) {
-        keysToProcess.push(key)
+    const changes = changesetAccumulator(
+      config.key,
+      lastState,
+      state,
+      serializationLevel
+    )
+    if (changes.add.length || changes.delete.length) {
+      changeSet = {
+        key: config.key,
+        add: changes.add,
+        delete: changes.delete,
       }
-    })
-
+    }
     // start the time iterator if not running (read: throttle)
     if (timeIterator === null) {
-      timeIterator = setInterval(processNextKey, throttle)
+      timeIterator = setTimeout(writeStagedState, throttle)
     }
-
     lastState = state
   }
 
-  function processNextKey() {
-    if (keysToProcess.length === 0) {
-      if (timeIterator) clearInterval(timeIterator)
+  function writeStagedState() {
+    if (!changeSet) {
+      if (timeIterator) clearTimeout(timeIterator)
       timeIterator = null
       return
     }
 
-    let key = keysToProcess.shift()
-    let endState = transforms.reduce((subState, transformer) => {
-      return transformer.in(subState, key, lastState)
-    }, lastState[key])
-
-    if (endState !== undefined) {
-      try {
-        stagedState[key] = serialize(endState)
-      } catch (err) {
-        console.error(
-          'redux-persist/createPersistoid: error serializing state',
-          err
-        )
-      }
-    } else {
-      //if the endState is undefined, no need to persist the existing serialized content
-      delete stagedState[key]
-    }
-
-    if (keysToProcess.length === 0) {
-      writeStagedState()
-    }
-  }
-
-  function writeStagedState() {
-    // cleanup any removed keys just before write.
-    Object.keys(stagedState).forEach(key => {
-      if (lastState[key] === undefined) {
-        delete stagedState[key]
-      }
-    })
-
     writePromise = storage
-      .setItem(storageKey, serialize(stagedState))
+      .multiSet(config.key, changeSet.add)
       .catch(onWriteFail)
+
+    changeSet = null
+    timeIterator = null
   }
 
   function passWhitelistBlacklist(key) {
@@ -109,8 +73,8 @@ export default function createPersistoid(config: PersistConfig): Persistoid {
   }
 
   const flush = () => {
-    while (keysToProcess.length !== 0) {
-      processNextKey()
+    if (changeSet) {
+      writeStagedState()
     }
     return writePromise || Promise.resolve()
   }
