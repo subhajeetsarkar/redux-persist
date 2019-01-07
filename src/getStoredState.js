@@ -11,36 +11,25 @@ export default function getStoredState(
   const storage = config.storage
   const debug = config.debug
   const deserialize = config.serialize === false ? x => x : defaultDeserialize
-  //TODO: catch error and make it async await
-  let dbConnectPromise
-  if (config.dbConnectionRequired && typeof storage.openDb === 'function') {
-    dbConnectPromise = storage.openDb(config.dbName)
-  } else {
-    dbConnectPromise = new Promise((resolve, reject) => {
-      setTimeout(resolve, 0)
-    })
-  }
 
-  return dbConnectPromise.then(() =>
-    storage.multiGet(config.key).then(results => {
-      if (!results || !results.length) return undefined
-      else {
-        try {
-          let state = reconstructState(results, config.serializationLevel)
-          return state[config.key]
-        } catch (err) {
-          if (process.env.NODE_ENV !== 'production' && debug)
-            console.log(
-              `redux-persist/getStoredState: Error restoring data for ${
-                config.key
-              }`,
-              err
-            )
-          throw err
-        }
+  return storage.multiGet(config.key).then(results => {
+    if (!results || !results.length) return undefined
+    else {
+      try {
+        let state = reconstructState(results, config.serializationLevel)
+        return state[config.key]
+      } catch (err) {
+        if (process.env.NODE_ENV !== 'production' && debug)
+          console.log(
+            `redux-persist/getStoredState: Error restoring data for ${
+              config.key
+            }`,
+            err
+          )
+        throw err
       }
-    })
-  )
+    }
+  })
 }
 
 function reconstructState(resultsArr: any = [], serializationLevel = 0) {
