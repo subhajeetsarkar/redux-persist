@@ -1,52 +1,82 @@
-// @flow
+'use strict'
 
-import type {
-  Persistor,
-  PersistConfig,
-  PersistorOptions,
-  PersistorState,
-  MigrationManifest,
-  RehydrateAction,
-  RehydrateErrorType,
-} from './types'
+exports.__esModule = true
 
-import { createStore } from 'redux'
-import persistReducer from './persistReducer'
-import { FLUSH, PAUSE, PERSIST, PURGE, REGISTER, REHYDRATE } from './constants'
+var _extends =
+  Object.assign ||
+  function(target) {
+    for (var i = 1; i < arguments.length; i++) {
+      var source = arguments[i]
+      for (var key in source) {
+        if (Object.prototype.hasOwnProperty.call(source, key)) {
+          target[key] = source[key]
+        }
+      }
+    }
+    return target
+  }
 
-type PendingRehydrate = [Object, RehydrateErrorType, PersistConfig]
-type Persist = <R>(PersistConfig, MigrationManifest) => R => R
-type CreatePersistor = Object => void
-type BoostrappedCb = () => any
+exports.default = persistStore
 
-const initialState: PersistorState = {
+var _redux = require('redux')
+
+var _persistReducer = require('./persistReducer')
+
+var _persistReducer2 = _interopRequireDefault(_persistReducer)
+
+var _constants = require('./constants')
+import { default as storage } from 'react-native-couchbase-lite'
+
+function _interopRequireDefault(obj) {
+  return obj && obj.__esModule ? obj : { default: obj }
+}
+
+function _toConsumableArray(arr) {
+  if (Array.isArray(arr)) {
+    for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) {
+      arr2[i] = arr[i]
+    }
+    return arr2
+  } else {
+    return Array.from(arr)
+  }
+}
+
+var initialState = {
   registry: [],
   bootstrapped: false,
 }
 
-const persistorReducer = (state = initialState, action) => {
+var persistorReducer = function persistorReducer() {
+  var state =
+    arguments.length > 0 && arguments[0] !== undefined
+      ? arguments[0]
+      : initialState
+  var action = arguments[1]
+
   switch (action.type) {
-    case REGISTER:
-      return { ...state, registry: [...state.registry, action.key] }
-    case REHYDRATE:
-      let firstIndex = state.registry.indexOf(action.key)
-      let registry = [...state.registry]
+    case _constants.REGISTER:
+      return _extends({}, state, {
+        registry: [].concat(_toConsumableArray(state.registry), [action.key]),
+      })
+    case _constants.REHYDRATE:
+      var firstIndex = state.registry.indexOf(action.key)
+      var registry = [].concat(_toConsumableArray(state.registry))
       registry.splice(firstIndex, 1)
-      return { ...state, registry, bootstrapped: registry.length === 0 }
+      return _extends({}, state, {
+        registry: registry,
+        bootstrapped: registry.length === 0,
+      })
     default:
       return state
   }
 }
 
-export default function persistStore(
-  store: Object,
-  options?: ?PersistorOptions,
-  cb?: BoostrappedCb
-): Persistor {
+function persistStore(store, options, cb) {
   // help catch incorrect usage of passing PersistConfig in as PersistorOptions
   if (process.env.NODE_ENV !== 'production') {
-    let optionsToTest: Object = options || {}
-    let bannedKeys = [
+    var optionsToTest = options || {}
+    var bannedKeys = [
       'blacklist',
       'whitelist',
       'transforms',
@@ -54,35 +84,37 @@ export default function persistStore(
       'keyPrefix',
       'migrate',
     ]
-    bannedKeys.forEach(k => {
+    bannedKeys.forEach(function(k) {
       if (!!optionsToTest[k])
         console.error(
-          `redux-persist: invalid option passed to persistStore: "${k}". You may be incorrectly passing persistConfig into persistStore, whereas it should be passed into persistReducer.`
+          'redux-persist: invalid option passed to persistStore: "' +
+            k +
+            '". You may be incorrectly passing persistConfig into persistStore, whereas it should be passed into persistReducer.'
         )
     })
   }
-  let boostrappedCb = cb || false
+  var boostrappedCb = cb || false
 
-  let _pStore = createStore(
+  var _pStore = (0, _redux.createStore)(
     persistorReducer,
     initialState,
     options ? options.enhancer : undefined
   )
-  let register = (key: string) => {
+  var register = function register(key) {
     _pStore.dispatch({
-      type: REGISTER,
-      key,
+      type: _constants.REGISTER,
+      key: key,
     })
   }
 
-  let rehydrate = (key: string, payload: Object, err: any) => {
-    let rehydrateAction = {
-      type: REHYDRATE,
-      payload,
-      err,
-      key,
+  var rehydrate = function rehydrate(key, payload, err) {
+    var rehydrateAction = {
+      type: _constants.REHYDRATE,
+      payload: payload,
+      err: err,
+      key: key,
+      // dispatch to `store` to rehydrate and `persistor` to track result
     }
-    // dispatch to `store` to rehydrate and `persistor` to track result
     store.dispatch(rehydrateAction)
     _pStore.dispatch(rehydrateAction)
     if (boostrappedCb && persistor.getState().bootstrapped) {
@@ -91,39 +123,57 @@ export default function persistStore(
     }
   }
 
-  let persistor: Persistor = {
-    ..._pStore,
-    purge: () => {
-      let results = []
+  var persistor = _extends({}, _pStore, {
+    purge: function purge() {
+      var results = []
       store.dispatch({
-        type: PURGE,
-        result: purgeResult => {
+        type: _constants.PURGE,
+        result: function result(purgeResult) {
           results.push(purgeResult)
         },
       })
       return Promise.all(results)
     },
-    flush: () => {
-      let results = []
+    flush: function flush() {
+      var results = []
       store.dispatch({
-        type: FLUSH,
-        result: flushResult => {
+        type: _constants.FLUSH,
+        result: function result(flushResult) {
           results.push(flushResult)
         },
       })
       return Promise.all(results)
     },
-    pause: () => {
+    pause: function pause() {
       store.dispatch({
-        type: PAUSE,
+        type: _constants.PAUSE,
       })
     },
-    persist: () => {
-      store.dispatch({ type: PERSIST, register, rehydrate })
+    persist: function persist() {
+      store.dispatch({
+        type: _constants.PERSIST,
+        register: register,
+        rehydrate: rehydrate,
+      })
     },
-  }
+  })
 
-  persistor.persist()
-
+  storage
+    .getLocalDocument('AGENT_DATA')
+    .then(data => {
+      storage
+        .initialiseDBWithAgentId(data)
+        .then(() => {
+          persistor.persist()
+        })
+        .catch(() => {
+          //Todo proper handling
+          persistor.persist()
+        })
+    })
+    .catch(() => {
+      //Todo proper handling
+      persistor.persist()
+    })
   return persistor
 }
