@@ -65,7 +65,6 @@ export default function persistReducer<State: Object, Action: Object>(
   return (state: State, action: Action) => {
     let { _persist, ...rest } = state || {}
     let restState: State = rest
-
     if (action.type === PERSIST) {
       let _sealed = false
       let _rehydrate = (payload, err) => {

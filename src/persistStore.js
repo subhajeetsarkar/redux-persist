@@ -12,7 +12,15 @@ import type {
 
 import { createStore } from 'redux'
 import persistReducer from './persistReducer'
-import { FLUSH, PAUSE, PERSIST, PURGE, REGISTER, REHYDRATE } from './constants'
+import {
+  FLUSH,
+  PAUSE,
+  PERSIST,
+  PURGE,
+  REGISTER,
+  REHYDRATE,
+  LIFT_GATE,
+} from './constants'
 
 type PendingRehydrate = [Object, RehydrateErrorType, PersistConfig]
 type Persist = <R>(PersistConfig, MigrationManifest) => R => R
@@ -22,6 +30,7 @@ type BoostrappedCb = () => any
 const initialState: PersistorState = {
   registry: [],
   bootstrapped: false,
+  gateLifted: false,
 }
 
 const persistorReducer = (state = initialState, action) => {
@@ -33,6 +42,8 @@ const persistorReducer = (state = initialState, action) => {
       let registry = [...state.registry]
       registry.splice(firstIndex, 1)
       return { ...state, registry, bootstrapped: registry.length === 0 }
+    case LIFT_GATE:
+      return { ...state, gateLifted: true }
     default:
       return state
   }
@@ -121,9 +132,13 @@ export default function persistStore(
     persist: () => {
       store.dispatch({ type: PERSIST, register, rehydrate })
     },
+    liftGate: () => {
+      _pStore.dispatch({ type: LIFT_GATE })
+    },
   }
 
-  persistor.persist()
+  // persistor.persist()
+  persistor.liftGate()
 
   return persistor
 }
