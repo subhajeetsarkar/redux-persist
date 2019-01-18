@@ -8,3 +8,4 @@ export const PERSIST = 'persist/PERSIST'
 export const PURGE = 'persist/PURGE'
 export const REGISTER = 'persist/REGISTER'
 export const DEFAULT_VERSION = -1
+export const FORCE_REHYDRATE = 'persist/FORCE_REHYDRATE'

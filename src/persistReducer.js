@@ -6,6 +6,7 @@ import {
   PURGE,
   REHYDRATE,
   DEFAULT_VERSION,
+  FORCE_REHYDRATE,
 } from './constants'
 
 import type {
@@ -139,12 +140,79 @@ export default function persistReducer<State: Object, Action: Object>(
         ...baseReducer(restState, action),
         _persist: { version, rehydrated: false },
       }
-    } else if (action.type === PURGE) {
-      _purge = true
-      action.result(purgeStoredState(config))
+    } else if (action.type === FORCE_REHYDRATE) {
+      //need to refactor
+      let _sealed = false
+      let _rehydrate = (payload, err) => {
+        // dev warning if we are already sealed
+        if (process.env.NODE_ENV !== 'production' && _sealed)
+          console.error(
+            `redux-persist: rehydrate for "${
+              config.key
+            }" called after timeout.`,
+            payload,
+            err
+          )
+
+        // only rehydrate if we are not already sealed
+        if (!_sealed) {
+          action.rehydrate(config.key, payload, err)
+          _sealed = true
+        }
+      }
+      timeout &&
+        setTimeout(() => {
+          !_sealed &&
+            _rehydrate(
+              undefined,
+              new Error(
+                `redux-persist: persist timed out for persist key "${
+                  config.key
+                }"`
+              )
+            )
+        }, timeout)
+
+      // @NOTE PERSIST resumes if paused.
+      _paused = false
+
+      // @NOTE only ever create persistoid once, ensure we call it at least once, even if _persist has already been set
+      if (!_persistoid) _persistoid = createPersistoid(config)
+
+      // @NOTE PERSIST can be called multiple times, noop after the first
+      //if (_persist) return state
+      if (
+        typeof action.rehydrate !== 'function' ||
+        typeof action.register !== 'function'
+      )
+        throw new Error(
+          'redux-persist: either rehydrate or register is not a function on the PERSIST action. This can happen if the action is being replayed. This is an unexplored use case, please open an issue and we will figure out a resolution.'
+        )
+
+      action.register(config.key)
+
+      getStoredState(config).then(
+        restoredState => {
+          const migrate = config.migrate || ((s, v) => Promise.resolve(s))
+          migrate(restoredState, version).then(
+            migratedState => {
+              _rehydrate(migratedState)
+            },
+            migrateErr => {
+              if (process.env.NODE_ENV !== 'production' && migrateErr)
+                console.error('redux-persist: migration error', migrateErr)
+              _rehydrate(undefined, migrateErr)
+            }
+          )
+        },
+        err => {
+          _rehydrate(undefined, err)
+        }
+      )
+
       return {
         ...baseReducer(restState, action),
-        _persist,
+        _persist: { version, rehydrated: false },
       }
     } else if (action.type === FLUSH) {
       action.result(_persistoid && _persistoid.flush())
