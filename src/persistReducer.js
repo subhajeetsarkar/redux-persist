@@ -104,7 +104,7 @@ export default function persistReducer<State: Object, Action: Object>(
       if (!_persistoid) _persistoid = createPersistoid(config)
 
       // @NOTE PERSIST can be called multiple times, noop after the first
-      if (_persist) return state
+      if (_persist && !action.forcePersist) return state
       if (
         typeof action.rehydrate !== 'function' ||
         typeof action.register !== 'function'

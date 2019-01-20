@@ -20,6 +20,7 @@ import {
   REGISTER,
   REHYDRATE,
   LIFT_GATE,
+  INIT_PERSIST_STORE,
 } from './constants'
 
 type PendingRehydrate = [Object, RehydrateErrorType, PersistConfig]
@@ -42,6 +43,8 @@ const persistorReducer = (state = initialState, action) => {
       let registry = [...state.registry]
       registry.splice(firstIndex, 1)
       return { ...state, registry, bootstrapped: registry.length === 0 }
+    case INIT_PERSIST_STORE:
+      return { ...state, bootstrapped: false }
     case LIFT_GATE:
       return { ...state, gateLifted: true }
     default:
@@ -106,6 +109,10 @@ export default function persistStore(
     _pStore.dispatch({ type: LIFT_GATE })
   }
 
+  let initPersistStore = () => {
+    _pStore.dispatch({ type: INIT_PERSIST_STORE })
+  }
+
   let persistor: Persistor = {
     ..._pStore,
     purge: () => {
@@ -134,6 +141,9 @@ export default function persistStore(
       })
     },
     persist: forcePersist => {
+      if (forcePersist) {
+        initPersistStore()
+      }
       store.dispatch({ type: PERSIST, register, rehydrate, forcePersist })
     },
   }
