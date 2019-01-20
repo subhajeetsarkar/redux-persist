@@ -102,6 +102,10 @@ export default function persistStore(
     }
   }
 
+  let liftGate = () => {
+    _pStore.dispatch({ type: LIFT_GATE })
+  }
+
   let persistor: Persistor = {
     ..._pStore,
     purge: () => {
@@ -129,11 +133,8 @@ export default function persistStore(
         type: PAUSE,
       })
     },
-    persist: () => {
-      store.dispatch({ type: PERSIST, register, rehydrate })
-    },
-    liftGate: () => {
-      _pStore.dispatch({ type: LIFT_GATE })
+    persist: forcePersist => {
+      store.dispatch({ type: PERSIST, register, rehydrate, forcePersist })
     },
   }
 
@@ -148,7 +149,7 @@ export default function persistStore(
         persistor.persist()
       })
       .catch(() => {
-        persistor.liftGate()
+        liftGate()
       })
   } else {
     persistor.persist()
