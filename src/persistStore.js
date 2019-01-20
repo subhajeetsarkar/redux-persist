@@ -137,8 +137,22 @@ export default function persistStore(
     },
   }
 
-  // persistor.persist()
-  persistor.liftGate()
+  if (
+    options &&
+    options.createDatabase &&
+    typeof options.createDatabase === 'function'
+  ) {
+    options
+      .createDatabase()
+      .then(() => {
+        persistor.persist()
+      })
+      .catch(() => {
+        persistor.liftGate()
+      })
+  } else {
+    persistor.persist()
+  }
 
   return persistor
 }

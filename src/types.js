@@ -26,12 +26,11 @@ export type PersistConfig = {
   serialize?: boolean,
   serializationLevel?: number,
   timeout?: number,
-  dbConnectionRequired?: boolean,
-  dbName?: string,
 }
 
 export type PersistorOptions = {
   enhancer?: Function,
+  createDatabase?: Function,
 }
 
 export type Storage = {
