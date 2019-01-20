@@ -26,12 +26,11 @@ export type PersistConfig = {
   serialize?: boolean,
   serializationLevel?: number,
   timeout?: number,
-  dbConnectionRequired?: boolean,
-  dbName?: string,
 }
 
 export type PersistorOptions = {
   enhancer?: Function,
+  createDatabase?: Function,
 }
 
 export type Storage = {
@@ -74,6 +73,7 @@ type PersistorAction = RehydrateAction | RegisterAction
 export type PersistorState = {
   registry: Array<string>,
   bootstrapped: boolean,
+  gateLifted: boolean,
 }
 
 type PersistorSubscribeCallback = () => any
@@ -83,6 +83,7 @@ export type Persistor = {
   persist: () => void,
   purge: () => Promise<any>,
   flush: () => Promise<any>,
+  liftGate: () => void,
   +dispatch: PersistorAction => PersistorAction,
   +getState: () => PersistorState,
   +subscribe: PersistorSubscribeCallback => () => any,
