@@ -180,7 +180,7 @@ export default function persistReducer<State: Object, Action: Object>(
     }
 
     // if we have not already handled PERSIST, straight passthrough
-    if (!_persist) return baseReducer(state, action)
+    if (!_persist || action.persist === false) return baseReducer(state, action)
 
     // run base reducer:
     // is state modified ? return original : return updated
