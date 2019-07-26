@@ -1,3 +1,4 @@
+// eslint-disable-next-line flowtype/require-valid-file-annotation
 export default function changesetAccumulator(
   rootKey: string,
   lastState: any,

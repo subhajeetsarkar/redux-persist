@@ -30,10 +30,13 @@ export default function createPersistoid(config: PersistConfig): Persistoid {
       serializationLevel
     )
     if (changes.add.length || changes.delete.length) {
+      const prevAddChangeSets = (changeSet && changeSet.add) || []
+      const prevDeleteChangeSets = (changeSet && changeSet.delete) || []
+
       changeSet = {
         key: config.key,
-        add: changes.add,
-        delete: changes.delete,
+        add: [...changes.add, ...prevAddChangeSets],
+        delete: [...changes.delete, ...prevDeleteChangeSets],
       }
     }
     // start the time iterator if not running (read: throttle)
