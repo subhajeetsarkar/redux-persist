@@ -35,8 +35,8 @@ export default function createPersistoid(config: PersistConfig): Persistoid {
 
       changeSet = {
         key: config.key,
-        add: [...changes.add, ...prevAddChangeSets],
-        delete: [...changes.delete, ...prevDeleteChangeSets],
+        add: [...prevAddChangeSets, ...changes.add],
+        delete: [...prevDeleteChangeSets, ...changes.delete],
       }
     }
     // start the time iterator if not running (read: throttle)
